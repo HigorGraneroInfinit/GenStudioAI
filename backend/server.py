@@ -113,6 +113,21 @@ class ProjectCreate(BaseModel):
     name: str
     description: str
 
+class Transcript(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    meeting_date: Optional[str] = None
+    participants: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class TranscriptCreate(BaseModel):
+    title: str
+    content: str
+    meeting_date: Optional[str] = None
+    participants: Optional[str] = None
+
 # AI Provider Management
 class AIProviderManager:
     def __init__(self):
