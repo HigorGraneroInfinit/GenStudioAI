@@ -248,6 +248,85 @@ class GenStudioAPITester:
         except Exception as e:
             self.log_test("JSON export (no selection)", False, f"Error: {str(e)}")
 
+    def test_transcript_endpoints(self):
+        """Test transcript CRUD endpoints"""
+        print("\n🔍 Testing Transcript Endpoints...")
+        
+        # Test get all transcripts (should be empty initially)
+        try:
+            response = requests.get(f"{self.api_url}/transcripts", timeout=10)
+            success = response.status_code == 200
+            self.log_test("Get all transcripts", success, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_test("Get all transcripts", False, f"Error: {str(e)}")
+
+        # Test create transcript manually
+        test_transcript = {
+            "title": "Test Meeting Transcript",
+            "content": "This is a test meeting transcript content with discussion about requirements.",
+            "meeting_date": "2024-02-15",
+            "participants": "John Doe, Jane Smith"
+        }
+        
+        transcript_id = None
+        try:
+            response = requests.post(
+                f"{self.api_url}/transcripts",
+                json=test_transcript,
+                timeout=10
+            )
+            success = response.status_code == 200
+            if success:
+                transcript_data = response.json()
+                transcript_id = transcript_data.get('id')
+            self.log_test("Create transcript", success, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_test("Create transcript", False, f"Error: {str(e)}")
+
+        # Test get specific transcript
+        if transcript_id:
+            try:
+                response = requests.get(f"{self.api_url}/transcripts/{transcript_id}", timeout=10)
+                success = response.status_code == 200
+                self.log_test("Get specific transcript", success, f"Status: {response.status_code}")
+            except Exception as e:
+                self.log_test("Get specific transcript", False, f"Error: {str(e)}")
+
+        # Test transcript upload
+        try:
+            test_content = b"Meeting transcript: Discussion about new features and requirements."
+            files = {'files': ('meeting_transcript.txt', BytesIO(test_content), 'text/plain')}
+            
+            response = requests.post(
+                f"{self.api_url}/transcripts/upload",
+                files=files,
+                timeout=10
+            )
+            success = response.status_code == 200
+            if success:
+                upload_data = response.json()
+                uploaded_transcript_id = upload_data.get('transcripts', [{}])[0].get('id') if upload_data.get('transcripts') else None
+            self.log_test("Upload transcript file", success, f"Status: {response.status_code}")
+        except Exception as e:
+            self.log_test("Upload transcript file", False, f"Error: {str(e)}")
+
+        # Test delete transcript
+        if transcript_id:
+            try:
+                response = requests.delete(f"{self.api_url}/transcripts/{transcript_id}", timeout=10)
+                success = response.status_code == 200
+                self.log_test("Delete transcript", success, f"Status: {response.status_code}")
+            except Exception as e:
+                self.log_test("Delete transcript", False, f"Error: {str(e)}")
+
+        # Test get non-existent transcript
+        try:
+            response = requests.get(f"{self.api_url}/transcripts/non-existent-id", timeout=10)
+            success = response.status_code == 404
+            self.log_test("Get non-existent transcript", success, f"Status: {response.status_code} (expected 404)")
+        except Exception as e:
+            self.log_test("Get non-existent transcript", False, f"Error: {str(e)}")
+
     def test_file_processing(self):
         """Test file upload and processing"""
         print("\n🔍 Testing File Processing...")
@@ -265,7 +344,10 @@ class GenStudioAPITester:
                     'prompt': 'Test file processing',
                     'requirements': '',
                     'test_type': 'Functional',
-                    'num_test_cases': '1'
+                    'num_test_cases': '1',
+                    'selected_transcripts': '[]',
+                    'selected_alm': '',
+                    'selected_alm_items': '[]'
                 }
                 
                 response = requests.post(
