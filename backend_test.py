@@ -376,6 +376,7 @@ class GenStudioAPITester:
         
         self.test_health_endpoints()
         self.test_ai_provider_endpoints()
+        self.test_transcript_endpoints()
         self.test_test_case_endpoints()
         self.test_export_endpoints()
         self.test_file_processing()
