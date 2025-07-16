@@ -151,6 +151,16 @@ class AIProviderManager:
         if file_contents:
             context = "\n\n".join([f"File content:\n{content}" for content in file_contents])
         
+        # Add transcript context if provided
+        transcript_context = ""
+        if hasattr(request, 'selected_transcripts') and request.selected_transcripts:
+            transcript_docs = await db.transcripts.find({"id": {"$in": request.selected_transcripts}}).to_list(100)
+            if transcript_docs:
+                transcript_context = "\n\n".join([
+                    f"Meeting Transcript - {doc['title']}:\n{doc['content']}"
+                    for doc in transcript_docs
+                ])
+        
         # Create the prompt
         system_prompt = f"""You are an expert QA engineer specialized in creating comprehensive test cases. 
         
@@ -158,10 +168,12 @@ Generate {request.num_test_cases} detailed test cases based on the following req
 
 Requirements: {request.prompt}
 Test Type: {request.test_type}
-Additional Requirements: {request.requirements}
 
 Context from uploaded files:
 {context}
+
+Meeting transcripts context:
+{transcript_context}
 
 For each test case, provide:
 1. Title - Clear, descriptive title
