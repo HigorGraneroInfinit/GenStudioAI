@@ -506,6 +506,58 @@ async def export_to_json():
         headers={"Content-Disposition": "attachment; filename=test_cases.json"}
     )
 
+# Transcript Management
+@api_router.post("/transcripts", response_model=Transcript)
+async def create_transcript(transcript: TranscriptCreate):
+    """Create a new transcript"""
+    transcript_dict = transcript.dict()
+    transcript_obj = Transcript(**transcript_dict)
+    await db.transcripts.insert_one(transcript_obj.dict())
+    return transcript_obj
+
+@api_router.get("/transcripts", response_model=List[Transcript])
+async def get_transcripts():
+    """Get all transcripts"""
+    transcripts = await db.transcripts.find().sort("created_at", -1).to_list(1000)
+    return [Transcript(**t) for t in transcripts]
+
+@api_router.get("/transcripts/{transcript_id}", response_model=Transcript)
+async def get_transcript(transcript_id: str):
+    """Get specific transcript"""
+    transcript = await db.transcripts.find_one({"id": transcript_id})
+    if not transcript:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+    return Transcript(**transcript)
+
+@api_router.delete("/transcripts/{transcript_id}")
+async def delete_transcript(transcript_id: str):
+    """Delete transcript"""
+    result = await db.transcripts.delete_one({"id": transcript_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+    return {"message": "Transcript deleted successfully"}
+
+@api_router.post("/transcripts/upload")
+async def upload_transcripts(files: List[UploadFile] = File(...)):
+    """Upload transcript files"""
+    transcripts = []
+    
+    for file in files:
+        if file.filename and file.filename.endswith('.txt'):
+            content = await file.read()
+            text_content = content.decode('utf-8')
+            
+            # Create transcript from file
+            transcript = Transcript(
+                title=file.filename.replace('.txt', ''),
+                content=text_content
+            )
+            
+            await db.transcripts.insert_one(transcript.dict())
+            transcripts.append(transcript)
+    
+    return {"message": f"Uploaded {len(transcripts)} transcripts", "transcripts": transcripts}
+
 # Health check
 @api_router.get("/")
 async def root():
