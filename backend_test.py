@@ -155,9 +155,11 @@ class GenStudioAPITester:
             files = {'files': ('test.txt', BytesIO(b'Test requirements document'), 'text/plain')}
             data = {
                 'prompt': 'Test user login functionality',
-                'requirements': 'Basic login test',
                 'test_type': 'Functional',
-                'num_test_cases': '1'
+                'num_test_cases': '1',
+                'selected_transcripts': '[]',
+                'selected_alm': '',
+                'selected_alm_items': '[]'
             }
             
             response = requests.post(
