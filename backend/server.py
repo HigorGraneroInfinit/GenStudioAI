@@ -328,9 +328,11 @@ async def get_active_ai_provider():
 @api_router.post("/generate-test-cases", response_model=List[TestCase])
 async def generate_test_cases(
     prompt: str = Form(...),
-    requirements: str = Form(""),
     test_type: str = Form("Functional"),
     num_test_cases: int = Form(5),
+    selected_transcripts: str = Form("[]"),
+    selected_alm: str = Form(""),
+    selected_alm_items: str = Form("[]"),
     files: List[UploadFile] = File(default=[])
 ):
     """Generate test cases using AI"""
@@ -342,13 +344,21 @@ async def generate_test_cases(
             content = await process_uploaded_file(file)
             file_contents.append(content)
     
+    # Parse selected transcripts
+    try:
+        transcript_ids = json.loads(selected_transcripts)
+    except:
+        transcript_ids = []
+    
     # Create generation request
     request = TestCaseGenerationRequest(
         prompt=prompt,
-        requirements=requirements,
         test_type=test_type,
         num_test_cases=num_test_cases
     )
+    
+    # Add transcript context to request for processing
+    request.selected_transcripts = transcript_ids
     
     # Generate test cases
     test_cases = await ai_manager.generate_test_cases(request, file_contents)
