@@ -18,14 +18,79 @@ import {
   Save,
   RefreshCw,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Home,
+  Link,
+  Mic,
+  Menu,
+  BarChart3,
+  Database,
+  Bot,
+  GitBranch,
+  UserCheck,
+  Calendar,
+  Clock,
+  Filter,
+  Search
 } from 'lucide-react';
 import './App.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-// Component: AI Provider Configuration
+// Sidebar Navigation Component
+const Sidebar = ({ activeSection, onSectionChange }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'ai-config', label: 'AI Configuration', icon: Brain },
+    { id: 'alm-config', label: 'ALM Configuration', icon: Link },
+    { id: 'transcription', label: 'Gen Transcription AI', icon: Mic },
+    { id: 'test-cases', label: 'Test Cases', icon: TestTube },
+  ];
+
+  return (
+    <div className={`bg-gray-900 text-white h-screen transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-8">
+          <div className={`flex items-center space-x-3 ${isCollapsed ? 'justify-center' : ''}`}>
+            <TestTube className="text-blue-400" size={32} />
+            {!isCollapsed && <h1 className="text-xl font-bold">Gen Studio AI</h1>}
+          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="text-gray-400 hover:text-white"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+
+        <nav className="space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onSectionChange(item.id)}
+                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                  activeSection === item.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <Icon size={20} />
+                {!isCollapsed && <span>{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+};
+
+// AI Provider Configuration Component
 const AIProviderConfig = ({ onClose, onSave }) => {
   const [provider, setProvider] = useState('openai');
   const [apiKey, setApiKey] = useState('');
@@ -172,13 +237,15 @@ const AIProviderConfig = ({ onClose, onSave }) => {
   );
 };
 
-// Component: Test Case Generator
-const TestCaseGenerator = ({ onGenerate }) => {
+// Dashboard Component (Main Test Case Generation)
+const Dashboard = ({ transcripts, onGenerate }) => {
   const [prompt, setPrompt] = useState('');
-  const [requirements, setRequirements] = useState('');
   const [testType, setTestType] = useState('Functional');
   const [numTestCases, setNumTestCases] = useState(5);
   const [files, setFiles] = useState([]);
+  const [selectedTranscripts, setSelectedTranscripts] = useState([]);
+  const [selectedALM, setSelectedALM] = useState('');
+  const [selectedALMItems, setSelectedALMItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -206,9 +273,11 @@ const TestCaseGenerator = ({ onGenerate }) => {
     try {
       const formData = new FormData();
       formData.append('prompt', prompt);
-      formData.append('requirements', requirements);
       formData.append('test_type', testType);
       formData.append('num_test_cases', numTestCases.toString());
+      formData.append('selected_transcripts', JSON.stringify(selectedTranscripts));
+      formData.append('selected_alm', selectedALM);
+      formData.append('selected_alm_items', JSON.stringify(selectedALMItems));
       
       files.forEach(file => {
         formData.append('files', file);
@@ -222,8 +291,9 @@ const TestCaseGenerator = ({ onGenerate }) => {
 
       onGenerate(response.data);
       setPrompt('');
-      setRequirements('');
       setFiles([]);
+      setSelectedTranscripts([]);
+      setSelectedALMItems([]);
     } catch (error) {
       console.error('Generation failed:', error);
       alert('Failed to generate test cases. Please check your AI provider configuration.');
@@ -233,126 +303,619 @@ const TestCaseGenerator = ({ onGenerate }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <Brain className="text-blue-600" size={24} />
-        <h2 className="text-xl font-bold text-gray-800">Generate Test Cases</h2>
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Describe what you want to test *
-          </label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
-            rows={3}
-            placeholder="e.g., User authentication system with login, logout, and password reset functionality"
-          />
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Brain className="text-blue-600" size={24} />
+          <h2 className="text-xl font-bold text-gray-800">Generate Test Cases</h2>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Additional Requirements (Optional)
-          </label>
-          <textarea
-            value={requirements}
-            onChange={(e) => setRequirements(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
-            rows={2}
-            placeholder="e.g., Focus on edge cases, include performance testing, consider mobile responsiveness"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Test Type
+              Describe what you want to test *
             </label>
-            <select
-              value={testType}
-              onChange={(e) => setTestType(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Functional">Functional</option>
-              <option value="Performance">Performance</option>
-              <option value="Security">Security</option>
-              <option value="Usability">Usability</option>
-              <option value="Integration">Integration</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Test Cases
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={numTestCases}
-              onChange={(e) => setNumTestCases(Number(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
+              rows={3}
+              placeholder="e.g., User authentication system with login, logout, and password reset functionality"
             />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Upload Context Files (Optional)
-          </label>
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="mx-auto mb-2 text-gray-400" size={24} />
-            <p className="text-sm text-gray-600">
-              Drop files here or click to select
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Supported: .txt, .pdf, .docx
-            </p>
+          {/* ALM Context Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ALM Context (Optional)
+            </label>
+            <select
+              value={selectedALM}
+              onChange={(e) => setSelectedALM(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select ALM System</option>
+              <option value="jira">JIRA</option>
+              <option value="azure">Azure DevOps</option>
+            </select>
+            {selectedALM && (
+              <p className="text-sm text-gray-500 mt-1">
+                Configure your {selectedALM.toUpperCase()} connection in ALM Configuration to see available items.
+              </p>
+            )}
           </div>
 
-          {files.length > 0 && (
-            <div className="mt-2 space-y-2">
-              {files.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <div className="flex items-center space-x-2">
-                    <FileText size={16} className="text-gray-500" />
-                    <span className="text-sm text-gray-700">{file.name}</span>
+          {/* Meeting Transcripts Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Meeting Transcripts (Optional)
+            </label>
+            <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
+              {transcripts.length === 0 ? (
+                <p className="text-gray-500 text-sm">No transcripts available. Upload transcripts in Gen Transcription AI.</p>
+              ) : (
+                transcripts.map((transcript) => (
+                  <div key={transcript.id} className="flex items-center space-x-2 mb-2">
+                    <input
+                      type="checkbox"
+                      id={transcript.id}
+                      checked={selectedTranscripts.includes(transcript.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTranscripts([...selectedTranscripts, transcript.id]);
+                        } else {
+                          setSelectedTranscripts(selectedTranscripts.filter(id => id !== transcript.id));
+                        }
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor={transcript.id} className="text-sm text-gray-700 cursor-pointer">
+                      {transcript.title} - {new Date(transcript.created_at).toLocaleDateString()}
+                    </label>
                   </div>
-                  <button
-                    onClick={() => removeFile(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        <button
-          onClick={handleGenerate}
-          disabled={loading || !prompt.trim()}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-        >
-          {loading ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
-          <span>{loading ? 'Generating...' : 'Generate Test Cases'}</span>
-        </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Test Type
+              </label>
+              <select
+                value={testType}
+                onChange={(e) => setTestType(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Functional">Functional</option>
+                <option value="Performance">Performance</option>
+                <option value="Security">Security</option>
+                <option value="Usability">Usability</option>
+                <option value="Integration">Integration</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Test Cases
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={numTestCases}
+                onChange={(e) => setNumTestCases(Number(e.target.value))}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Upload Context Files (Optional)
+            </label>
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <input {...getInputProps()} />
+              <Upload className="mx-auto mb-2 text-gray-400" size={24} />
+              <p className="text-sm text-gray-600">
+                Drop files here or click to select
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Supported: .txt, .pdf, .docx
+              </p>
+            </div>
+
+            {files.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <div className="flex items-center space-x-2">
+                      <FileText size={16} className="text-gray-500" />
+                      <span className="text-sm text-gray-700">{file.name}</span>
+                    </div>
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={loading || !prompt.trim()}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            {loading ? <RefreshCw size={16} className="animate-spin" /> : <Zap size={16} />}
+            <span>{loading ? 'Generating...' : 'Generate Test Cases'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-// Component: Test Case Card
+// AI Configuration Page
+const AIConfigPage = ({ activeProvider, onProviderUpdate }) => {
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Brain className="text-blue-600" size={24} />
+          <h2 className="text-xl font-bold text-gray-800">AI Configuration</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              {activeProvider ? (
+                <div className="flex items-center space-x-2">
+                  <CheckCircle2 className="text-green-500" size={20} />
+                  <span className="text-sm text-gray-600">
+                    Active: {activeProvider.provider} - {activeProvider.model}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="text-orange-500" size={20} />
+                  <span className="text-sm text-gray-600">No AI provider configured</span>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setShowConfigModal(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              <Settings size={16} />
+              <span>Configure AI Provider</span>
+            </button>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-800 mb-2">Supported AI Providers</h3>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Bot className="text-blue-500" size={16} />
+                <span className="text-sm">OpenAI (GPT-4, GPT-3.5-turbo)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Bot className="text-purple-500" size={16} />
+                <span className="text-sm">Anthropic Claude</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Bot className="text-green-500" size={16} />
+                <span className="text-sm">Google Gemini</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showConfigModal && (
+        <AIProviderConfig
+          onClose={() => setShowConfigModal(false)}
+          onSave={onProviderUpdate}
+        />
+      )}
+    </div>
+  );
+};
+
+// ALM Configuration Page
+const ALMConfigPage = () => {
+  const [selectedALM, setSelectedALM] = useState('');
+  const [jiraConfig, setJiraConfig] = useState({
+    url: '',
+    username: '',
+    apiToken: ''
+  });
+  const [azureConfig, setAzureConfig] = useState({
+    organization: '',
+    project: '',
+    patToken: ''
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Link className="text-blue-600" size={24} />
+          <h2 className="text-xl font-bold text-gray-800">ALM Configuration</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select ALM System
+            </label>
+            <select
+              value={selectedALM}
+              onChange={(e) => setSelectedALM(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Choose ALM System</option>
+              <option value="jira">JIRA</option>
+              <option value="azure">Azure DevOps</option>
+            </select>
+          </div>
+
+          {selectedALM === 'jira' && (
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="font-medium text-gray-800 mb-4">JIRA Configuration</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    JIRA URL
+                  </label>
+                  <input
+                    type="url"
+                    value={jiraConfig.url}
+                    onChange={(e) => setJiraConfig({...jiraConfig, url: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://yourcompany.atlassian.net"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Username/Email
+                  </label>
+                  <input
+                    type="email"
+                    value={jiraConfig.username}
+                    onChange={(e) => setJiraConfig({...jiraConfig, username: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="your.email@company.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Token
+                  </label>
+                  <input
+                    type="password"
+                    value={jiraConfig.apiToken}
+                    onChange={(e) => setJiraConfig({...jiraConfig, apiToken: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Your JIRA API token"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedALM === 'azure' && (
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="font-medium text-gray-800 mb-4">Azure DevOps Configuration</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Organization
+                  </label>
+                  <input
+                    type="text"
+                    value={azureConfig.organization}
+                    onChange={(e) => setAzureConfig({...azureConfig, organization: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="yourorganization"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Project
+                  </label>
+                  <input
+                    type="text"
+                    value={azureConfig.project}
+                    onChange={(e) => setAzureConfig({...azureConfig, project: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="yourproject"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Personal Access Token
+                  </label>
+                  <input
+                    type="password"
+                    value={azureConfig.patToken}
+                    onChange={(e) => setAzureConfig({...azureConfig, patToken: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    placeholder="Your Azure DevOps PAT token"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              disabled={!selectedALM}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <Save size={16} />
+              <span>Save Configuration</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Gen Transcription AI Page
+const TranscriptionPage = ({ transcripts, onTranscriptsUpdate }) => {
+  const [files, setFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [newTranscript, setNewTranscript] = useState({
+    title: '',
+    content: '',
+    meetingDate: '',
+    participants: ''
+  });
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: {
+      'text/plain': ['.txt'],
+    },
+    onDrop: (acceptedFiles) => {
+      setFiles(acceptedFiles);
+    }
+  });
+
+  const handleUpload = async () => {
+    if (files.length === 0) {
+      alert('Please select a transcript file');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const response = await axios.post(`${API}/transcripts/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      onTranscriptsUpdate();
+      setFiles([]);
+      alert('Transcripts uploaded successfully!');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Failed to upload transcripts');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleManualAdd = async () => {
+    if (!newTranscript.title || !newTranscript.content) {
+      alert('Please provide title and content');
+      return;
+    }
+
+    try {
+      await axios.post(`${API}/transcripts`, newTranscript);
+      onTranscriptsUpdate();
+      setNewTranscript({
+        title: '',
+        content: '',
+        meetingDate: '',
+        participants: ''
+      });
+      alert('Transcript added successfully!');
+    } catch (error) {
+      console.error('Failed to add transcript:', error);
+      alert('Failed to add transcript');
+    }
+  };
+
+  const handleDelete = async (transcriptId) => {
+    if (window.confirm('Are you sure you want to delete this transcript?')) {
+      try {
+        await axios.delete(`${API}/transcripts/${transcriptId}`);
+        onTranscriptsUpdate();
+      } catch (error) {
+        alert('Failed to delete transcript');
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Mic className="text-blue-600" size={24} />
+          <h2 className="text-xl font-bold text-gray-800">Gen Transcription AI</h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Upload Transcripts */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Upload Transcript Files</h3>
+            <div
+              {...getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <input {...getInputProps()} />
+              <Upload className="mx-auto mb-2 text-gray-400" size={32} />
+              <p className="text-sm text-gray-600">
+                Drop transcript files here or click to select
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Supported: .txt files only
+              </p>
+            </div>
+
+            {files.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                    <div className="flex items-center space-x-2">
+                      <FileText size={16} className="text-gray-500" />
+                      <span className="text-sm text-gray-700">{file.name}</span>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={handleUpload}
+                  disabled={uploading}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center space-x-2"
+                >
+                  {uploading ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
+                  <span>{uploading ? 'Uploading...' : 'Upload Transcripts'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Manual Entry */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Add Transcript Manually</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={newTranscript.title}
+                  onChange={(e) => setNewTranscript({...newTranscript, title: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="Meeting title or description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Meeting Date
+                </label>
+                <input
+                  type="date"
+                  value={newTranscript.meetingDate}
+                  onChange={(e) => setNewTranscript({...newTranscript, meetingDate: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Participants
+                </label>
+                <input
+                  type="text"
+                  value={newTranscript.participants}
+                  onChange={(e) => setNewTranscript({...newTranscript, participants: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="John Doe, Jane Smith"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Content *
+                </label>
+                <textarea
+                  value={newTranscript.content}
+                  onChange={(e) => setNewTranscript({...newTranscript, content: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={8}
+                  placeholder="Enter the meeting transcript content here..."
+                />
+              </div>
+              <button
+                onClick={handleManualAdd}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center space-x-2"
+              >
+                <Plus size={16} />
+                <span>Add Transcript</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Transcripts List */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Existing Transcripts</h3>
+        {transcripts.length === 0 ? (
+          <div className="text-center py-8">
+            <Mic className="mx-auto text-gray-400 mb-4" size={48} />
+            <p className="text-gray-500">No transcripts uploaded yet</p>
+            <p className="text-gray-400 text-sm">Upload or add transcripts to provide context for test case generation</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {transcripts.map((transcript) => (
+              <div key={transcript.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-medium text-gray-800">{transcript.title}</h4>
+                  <button
+                    onClick={() => handleDelete(transcript.id)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="text-sm text-gray-600 mb-2">
+                  {transcript.meeting_date && (
+                    <span className="mr-4">📅 {new Date(transcript.meeting_date).toLocaleDateString()}</span>
+                  )}
+                  {transcript.participants && (
+                    <span>👥 {transcript.participants}</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-700 line-clamp-2">
+                  {transcript.content.substring(0, 200)}...
+                </p>
+                <div className="text-xs text-gray-500 mt-2">
+                  Added: {new Date(transcript.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Test Case Card Component
 const TestCaseCard = ({ testCase, onEdit, onDelete, onToggleSelect }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -586,46 +1149,13 @@ const TestCaseCard = ({ testCase, onEdit, onDelete, onToggleSelect }) => {
   );
 };
 
-// Main App Component
-function App() {
-  const [testCases, setTestCases] = useState([]);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [activeProvider, setActiveProvider] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Load test cases and active provider
-  useEffect(() => {
-    loadTestCases();
-    loadActiveProvider();
-  }, []);
-
-  const loadTestCases = async () => {
-    try {
-      const response = await axios.get(`${API}/test-cases`);
-      setTestCases(response.data);
-    } catch (error) {
-      console.error('Failed to load test cases:', error);
-    }
-  };
-
-  const loadActiveProvider = async () => {
-    try {
-      const response = await axios.get(`${API}/ai-providers/active`);
-      setActiveProvider(response.data);
-    } catch (error) {
-      console.error('Failed to load active provider:', error);
-    }
-  };
-
-  const handleGenerate = (newTestCases) => {
-    setTestCases(prev => [...newTestCases, ...prev]);
-  };
-
+// Test Cases Management Page
+const TestCasesPage = ({ testCases, onTestCasesUpdate }) => {
   const handleDelete = async (testCaseId) => {
     if (window.confirm('Are you sure you want to delete this test case?')) {
       try {
         await axios.delete(`${API}/test-cases/${testCaseId}`);
-        setTestCases(prev => prev.filter(tc => tc.id !== testCaseId));
+        onTestCasesUpdate();
       } catch (error) {
         alert('Failed to delete test case');
       }
@@ -638,9 +1168,7 @@ function App() {
       await axios.put(`${API}/test-cases/${testCaseId}`, {
         is_selected: !testCase.is_selected
       });
-      setTestCases(prev => prev.map(tc => 
-        tc.id === testCaseId ? { ...tc, is_selected: !tc.is_selected } : tc
-      ));
+      onTestCasesUpdate();
     } catch (error) {
       alert('Failed to update test case selection');
     }
@@ -669,7 +1197,7 @@ function App() {
     if (window.confirm('Are you sure you want to delete all test cases? This cannot be undone.')) {
       try {
         await axios.delete(`${API}/test-cases`);
-        setTestCases([]);
+        onTestCasesUpdate();
       } catch (error) {
         alert('Failed to clear test cases');
       }
@@ -679,121 +1207,168 @@ function App() {
   const selectedCount = testCases.filter(tc => tc.is_selected).length;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <TestTube className="text-blue-600" size={32} />
-              <h1 className="text-2xl font-bold text-gray-800">Gen Studio AI</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                {activeProvider ? (
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="text-green-500" size={16} />
-                    <span className="text-sm text-gray-600">
-                      {activeProvider.provider} - {activeProvider.model}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <AlertCircle className="text-orange-500" size={16} />
-                    <span className="text-sm text-gray-600">No AI provider configured</span>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setShowConfigModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-              >
-                <Settings size={16} />
-                <span>Configure AI</span>
-              </button>
-            </div>
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center space-x-2">
+            <TestTube className="text-blue-600" size={24} />
+            <h2 className="text-xl font-bold text-gray-800">Test Cases Management</h2>
+            <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">
+              {testCases.length} total
+            </span>
+            {selectedCount > 0 && (
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-sm">
+                {selectedCount} selected
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleExport('json')}
+              disabled={selectedCount === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={16} />
+              <span>Export JSON</span>
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              disabled={selectedCount === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={16} />
+              <span>Export Excel</span>
+            </button>
+            <button
+              onClick={handleClearAll}
+              disabled={testCases.length === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={16} />
+              <span>Clear All</span>
+            </button>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Test Case Generator */}
-        <TestCaseGenerator onGenerate={handleGenerate} />
-
-        {/* Test Cases Management */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center space-x-2">
-              <FileText className="text-gray-600" size={24} />
-              <h2 className="text-xl font-bold text-gray-800">Test Cases</h2>
-              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-sm">
-                {testCases.length} total
-              </span>
-              {selectedCount > 0 && (
-                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-sm">
-                  {selectedCount} selected
-                </span>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleExport('json')}
-                disabled={selectedCount === 0}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download size={16} />
-                <span>Export JSON</span>
-              </button>
-              <button
-                onClick={() => handleExport('excel')}
-                disabled={selectedCount === 0}
-                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Download size={16} />
-                <span>Export Excel</span>
-              </button>
-              <button
-                onClick={handleClearAll}
-                disabled={testCases.length === 0}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Trash2 size={16} />
-                <span>Clear All</span>
-              </button>
-            </div>
+        {testCases.length === 0 ? (
+          <div className="text-center py-12">
+            <TestTube className="mx-auto text-gray-400 mb-4" size={48} />
+            <p className="text-gray-500 text-lg">No test cases yet</p>
+            <p className="text-gray-400 text-sm">Generate some test cases in the Dashboard to get started</p>
           </div>
+        ) : (
+          <div className="space-y-4">
+            {testCases.map((testCase) => (
+              <TestCaseCard
+                key={testCase.id}
+                testCase={testCase}
+                onEdit={onTestCasesUpdate}
+                onDelete={handleDelete}
+                onToggleSelect={handleToggleSelect}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-          {testCases.length === 0 ? (
-            <div className="text-center py-12">
-              <TestTube className="mx-auto text-gray-400 mb-4" size={48} />
-              <p className="text-gray-500 text-lg">No test cases yet</p>
-              <p className="text-gray-400 text-sm">Generate some test cases using AI to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {testCases.map((testCase) => (
-                <TestCaseCard
-                  key={testCase.id}
-                  testCase={testCase}
-                  onEdit={loadTestCases}
-                  onDelete={handleDelete}
-                  onToggleSelect={handleToggleSelect}
-                />
-              ))}
-            </div>
-          )}
+// Main App Component
+function App() {
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [testCases, setTestCases] = useState([]);
+  const [transcripts, setTranscripts] = useState([]);
+  const [activeProvider, setActiveProvider] = useState(null);
+
+  // Load data
+  useEffect(() => {
+    loadTestCases();
+    loadTranscripts();
+    loadActiveProvider();
+  }, []);
+
+  const loadTestCases = async () => {
+    try {
+      const response = await axios.get(`${API}/test-cases`);
+      setTestCases(response.data);
+    } catch (error) {
+      console.error('Failed to load test cases:', error);
+    }
+  };
+
+  const loadTranscripts = async () => {
+    try {
+      const response = await axios.get(`${API}/transcripts`);
+      setTranscripts(response.data);
+    } catch (error) {
+      console.error('Failed to load transcripts:', error);
+      setTranscripts([]); // Set empty array if endpoint doesn't exist yet
+    }
+  };
+
+  const loadActiveProvider = async () => {
+    try {
+      const response = await axios.get(`${API}/ai-providers/active`);
+      setActiveProvider(response.data);
+    } catch (error) {
+      console.error('Failed to load active provider:', error);
+    }
+  };
+
+  const handleGenerate = (newTestCases) => {
+    setTestCases(prev => [...newTestCases, ...prev]);
+  };
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return (
+          <Dashboard
+            transcripts={transcripts}
+            onGenerate={handleGenerate}
+          />
+        );
+      case 'ai-config':
+        return (
+          <AIConfigPage
+            activeProvider={activeProvider}
+            onProviderUpdate={loadActiveProvider}
+          />
+        );
+      case 'alm-config':
+        return <ALMConfigPage />;
+      case 'transcription':
+        return (
+          <TranscriptionPage
+            transcripts={transcripts}
+            onTranscriptsUpdate={loadTranscripts}
+          />
+        );
+      case 'test-cases':
+        return (
+          <TestCasesPage
+            testCases={testCases}
+            onTestCasesUpdate={loadTestCases}
+          />
+        );
+      default:
+        return <Dashboard transcripts={transcripts} onGenerate={handleGenerate} />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
+      <main className="flex-1 overflow-y-auto">
+        <div className="p-6">
+          {renderContent()}
         </div>
       </main>
-
-      {/* AI Provider Configuration Modal */}
-      {showConfigModal && (
-        <AIProviderConfig
-          onClose={() => setShowConfigModal(false)}
-          onSave={loadActiveProvider}
-        />
-      )}
     </div>
   );
 }
